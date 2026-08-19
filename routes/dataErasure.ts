@@ -100,10 +100,19 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
         _logo_: utils.extractFilename(config.get('application.logo'))
       }
 
-      if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
+      if (typeof req.body.layout === 'string' && req.body.layout) {
+        const projectRoot = path.resolve(__dirname, '..')
+        const viewsDirectory = path.resolve(projectRoot, 'views')
+        const layoutFilePath = path.resolve(viewsDirectory, req.body.layout)
+
+        const isOutsideProject = !layoutFilePath.startsWith(projectRoot + path.sep) && layoutFilePath !== projectRoot
+
+        const filePath: string = layoutFilePath.toLowerCase()
         const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
-        if (!isForbiddenFile) {
+
+        if (isOutsideProject || isForbiddenFile) {
+          next(new Error('File access not allowed'))
+        } else {
           res.render('dataErasureResult', {
             ...req.body,
             ...themeVars
@@ -116,8 +125,6 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
               challengeUtils.solveIf(challenges.lfrChallenge, () => { return true })
             }
           })
-        } else {
-          next(new Error('File access not allowed'))
         }
       } else {
         res.render('dataErasureResult', {
