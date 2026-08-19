@@ -16,8 +16,46 @@ import * as utils from '../lib/utils'
 export function b2bOrder () {
   return ({ body }: Request, res: Response, next: NextFunction) => {
     if (utils.isChallengeEnabled(challenges.rceChallenge) || utils.isChallengeEnabled(challenges.rceOccupyChallenge)) {
-      const orderLinesData = body.orderLinesData || ''
+      let orderLinesData = body.orderLinesData || ''
+      if (typeof orderLinesData !== 'string') {
+        orderLinesData = String(orderLinesData)
+      }
       try {
+        const forbiddenPatterns = [
+          /\./,           // dot
+          /\[/,           // opening square bracket
+          /\]/,           // closing square bracket
+          /\\/,           // backslash
+          /__proto__/,
+          /constructor/i,
+          /prototype/i,
+          /process/i,
+          /require/i,
+          /child_process/i,
+          /exec/i,
+          /spawn/i,
+          /Function/i,
+          /eval/i,
+          /global/i,
+          /mainModule/i,
+          /module/i,
+          /import/i,
+          /Reflect/i,
+          /Proxy/i,
+          /Symbol/i,
+          /fs/i,
+          /os/i,
+          /path/i,
+          /getPrototypeOf/i,
+          /getOwnProperty/i,
+          /defineProperty/i,
+          /defineProperties/i
+        ]
+
+        if (forbiddenPatterns.some(pattern => pattern.test(orderLinesData))) {
+          throw new Error('Blocked: Potential sandbox escape detected')
+        }
+
         const sandbox = { safeEval, orderLinesData }
         vm.createContext(sandbox)
         vm.runInContext('safeEval(orderLinesData)', sandbox, { timeout: 2000 })
