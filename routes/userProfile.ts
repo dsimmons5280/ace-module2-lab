@@ -58,6 +58,15 @@ export function getUserProfile () {
         if (!code) {
           throw new Error('Username is null')
         }
+        if (code.includes('${')) {
+          throw new Error('Template literal interpolation is forbidden')
+        }
+        const stringLiteralRegex = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g
+        const cleanCode = code.replace(stringLiteralRegex, '""')
+        const safeCharsRegex = /^[0-9+\-*/%() \t\r\n"'\`]*$/
+        if (!safeCharsRegex.test(cleanCode)) {
+          throw new Error('Forbidden characters or expressions in username interpolation')
+        }
         username = eval(code) // eslint-disable-line no-eval
       } catch (err) {
         username = '\\' + username
